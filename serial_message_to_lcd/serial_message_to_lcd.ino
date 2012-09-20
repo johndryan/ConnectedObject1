@@ -6,13 +6,14 @@ char message[61];
 int messageBytesRead = 0;
 int currentLetter = 0;
 String trimmedMessage = "";
+boolean messagePresent = false;
 
 void setup() { 
   Serial.begin(9600);                    // RFID reader SOUT pin connected to Serial RX pin at 2400bps
 
   lcd.begin(16, 2);                      // set up the LCD's number of columns and rows
   lcd.setCursor(0, 0);
-  lcd.print("   S Y S T E M  ");
+  lcd.print("  S Y S T E M   ");
   lcd.setCursor(0, 1);
   lcd.print("   R E A D Y !  ");
 
@@ -44,7 +45,14 @@ void loop() {
       currentLetter = 0;
       lcd.setCursor(1, 0);
       lcd.print(trimmedMessage);
+      messagePresent = true;
     }
+  }
+  
+  
+  if(messagePresent) {                   //Scroll message if present
+    lcd.scrollDisplayLeft();
+    delay(400);
   }
 } 
 
