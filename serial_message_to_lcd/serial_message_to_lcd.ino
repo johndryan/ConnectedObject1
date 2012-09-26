@@ -1,5 +1,5 @@
 #include <LiquidCrystal.h>               // include lcd library code
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);   // initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(12, 11, 7, 6, 5, 4);   // initialize the library with the numbers of the interface pins
 
 int  val = 0;
 char message[61];
