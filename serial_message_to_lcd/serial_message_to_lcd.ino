@@ -11,12 +11,32 @@ unsigned long lastConnectionTime = 0;          // last time you connected to the
 boolean lastConnected = false;                 // state of the connection last time through the main loop
 const unsigned long postingInterval = 10*1000;  // delay between updates, in milliseconds
 
-int  val = 0;
-char message[61];
-int messageBytesRead = 0;
+unsigned long lastLCDChange = 0;          // last time you connected to the server, in milliseconds
+const unsigned long lcdInterval = 2*1000;  // delay between updates, in milliseconds
+
+//boolean serverChecked = false;
+
 int currentLetter = 0;
-String trimmedMessage = "";
-boolean messagePresent = false;
+int currentLine = 0;
+int currentLineDisplay = 0;
+int numLines = 10;
+String tempString = "";
+
+String line_0 = "----------------";   // "String 0" etc are strings to store - change to suit.
+String line_1 = "WAITING.        ";
+String line_2 = "WAITING .       ";
+String line_3 = "WAITING  .      ";
+String line_4 = "WAITING   .     ";
+String line_5 = "WAITING    .    ";
+String line_6 = "WAITING     .   ";
+String line_7 = "WAITING      .  ";
+String line_8 = "WAITING       . ";
+String line_9 = "WAITING        .";
+String line_10 = "WAITING         ";
+
+boolean readingMessage = false;
+
+String lcd_lines[] = { line_0, line_1, line_2, line_3, line_4, line_5, line_6, line_7, line_8, line_9, line_10 };
 
 void setup() { 
   Serial.begin(9600);
@@ -45,15 +65,38 @@ void loop() {
     char c = client.read();
     Serial.print(c);
     if (c == 126) {
-      if (messagePresent) {
-        messagePresent = false;
+      if (readingMessage) {
+        //-- END MESSAGE
+        readingMessage = false;
+        numLines = currentLine;
       } else {
-        lcd.clear();
-        lcd.setCursor(0,0);
-        messagePresent = true; 
+        //-- START MESSAGE
+        currentLetter = 0;
+        currentLine = 0;
+        readingMessage = true;
+        lcd_lines[currentLine] = "";
       }
-    } else {
-      if (messagePresent) lcd.print(c);
+    } else if (readingMessage) {
+      //-- READING MESSAGE
+      if (currentLetter > 15) {
+        //Next Line
+        currentLetter = 0;
+        currentLine++;
+        if (currentLine > 10) {
+          // Message too long, ABORT ???
+          readingMessage = false;
+          numLines = 10;
+          currentLine = 0;
+          client.stop();
+          return;
+        }
+        lcd_lines[currentLine] = "";
+      }
+        if (c == '\n' || c == '\r') c = ' ';
+        lcd_lines[currentLine] = lcd_lines[currentLine] + c;
+        currentLetter++;
+      
+      //if (readingMessage) lcd.print(c);
     }
   }
 
@@ -71,14 +114,17 @@ void loop() {
   // store the state of the connection for next time through
   // the loop:
   lastConnected = client.connected();
+  
+  if((millis() - lastLCDChange > lcdInterval) && !readingMessage) {
+    lcdUpdate();
+  }
 }
-
 
 // this method makes a HTTP connection to the server:
 void httpRequest() {
   // if there's a successful connection:
   if (client.connect(serverName, 80)) {
-    client.println("GET /arduino.txt HTTP/1.0");
+    client.println("GET /arduino/data.txt HTTP/1.0");
     client.println();
 
     // note the time that the connection was made:
@@ -92,4 +138,28 @@ void httpRequest() {
     lcd.print("   - ERROR -    ");
     client.stop();
   }
+}
+
+// Update LCD
+void lcdUpdate() {
+  Serial.println(numLines + "LINES ----------------");
+  for (int i=0; i <= numLines; i++){
+    Serial.println("::" + lcd_lines[i]);
+  }
+  lcd.clear();
+  lcd.setCursor(0,0);
+  if (currentLineDisplay < 0) {
+    lcd.print("----------------");
+  } else {
+    lcd.print(lcd_lines[currentLineDisplay]);
+  }
+  lcd.setCursor(0,1);
+  if (currentLineDisplay == numLines) {
+    lcd.print("----------------");
+  } else {
+    lcd.print(lcd_lines[currentLineDisplay+1]); 
+  }
+  currentLineDisplay++;
+  if (currentLineDisplay > numLines) currentLineDisplay = -1;
+  lastLCDChange = millis();
 }
